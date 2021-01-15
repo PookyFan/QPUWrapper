@@ -21,14 +21,14 @@ namespace QPUWrapper
             {
             }
 
+            MappedMemory(const MappedMemory&) = delete;
+
             MappedMemory& operator=(MappedMemory &&other)
             {
                 localAddress = other.localAddress;
                 mappedBlockSize = other.mappedBlockSize;
                 return *this;
-            }
-
-            MappedMemory(const MappedMemory&) = delete;
+            }   
 
             MappedMemory& operator=(const MappedMemory&) = delete;
 
@@ -43,7 +43,7 @@ namespace QPUWrapper
             }
 
         private:
-            T* localAddress;
+            T*     localAddress;
             size_t mappedBlockSize; //In bytes
     };
 }
