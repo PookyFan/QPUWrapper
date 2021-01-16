@@ -19,6 +19,8 @@ namespace QPUWrapper
 
             MappedMemory(MappedMemory &&other) : localAddress(other.localAddress), mappedBlockSize(other.mappedBlockSize)
             {
+                other.localAddress = nullptr;
+                other.mappedBlockSize = 0;
             }
 
             MappedMemory(const MappedMemory&) = delete;
@@ -27,6 +29,8 @@ namespace QPUWrapper
             {
                 localAddress = other.localAddress;
                 mappedBlockSize = other.mappedBlockSize;
+                other.localAddress = nullptr;
+                other.mappedBlockSize = 0;
                 return *this;
             }   
 
@@ -35,6 +39,16 @@ namespace QPUWrapper
             operator T*()
             {
                 return localAddress;
+            }
+
+            operator bool()
+            {
+                return (localAddress != nullptr && mappedBlockSize != 0);
+            }
+
+            T operator[](int index)
+            {
+                return localAddress[index];
             }
 
             size_t getMappedBlockSize()
