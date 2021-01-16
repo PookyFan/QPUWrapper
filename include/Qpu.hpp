@@ -77,13 +77,15 @@ namespace QPUWrapper
         private:
             Qpu(); //This is a singleton!
 
+            void reserveQpus(int useCount);
             void unlockGpuMemory(uint32_t memoryHandle);
             void freeGpuMemory(uint32_t memoryHandle, void *mappedAddress, size_t size);
             GpuAddress lockGpuMemory(uint32_t memoryHandle);
             std::tuple<uint32_t, GpuAddress, void*> allocateGpuMemory(size_t size);
             
+            int qpuCount;
             uint32_t memAllocFlags;
-            MappedMemory<volatile uint32_t> peripheralsAddress;
+            MappedMemory<volatile uint32_t> peripherals;
 
             static Qpu *instance;
     };

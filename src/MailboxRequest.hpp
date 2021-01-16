@@ -11,10 +11,11 @@ namespace QPUWrapper
 
     enum class RequestType : uint32_t
     {
-        MemoryAllocation   = 0x3000C,
         MemoryLock         = 0x3000D,
         MemoryUnlock       = 0x3000E,
-        MemoryDeallocation = 0x3000F
+        MemoryAllocation   = 0x3000C,
+        MemoryDeallocation = 0x3000F,
+        SetQpuState        = 0x30012
     };
 
     class MailboxRequest

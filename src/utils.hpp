@@ -23,7 +23,7 @@ namespace QPUWrapper
     }
 
     template<typename T>
-    void unmapPhysicalAddress(MappedMemory<T> &&mappedMem)
+    void unmapPhysicalAddress(MappedMemory<T> &mappedMem)
     {
         unmapPhysicalAddress(mappedMem, mappedMem.getMappedBlockSize());
         mappedMem = {nullptr, 0};

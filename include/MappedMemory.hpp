@@ -46,7 +46,7 @@ namespace QPUWrapper
                 return (localAddress != nullptr && mappedBlockSize != 0);
             }
 
-            T operator[](int index)
+            T& operator[](int index)
             {
                 return localAddress[index];
             }
