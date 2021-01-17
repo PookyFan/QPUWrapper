@@ -24,11 +24,6 @@ namespace QPUWrapper
 
             GpuBuffer(const GpuBuffer&) = delete;
 
-            ~GpuBuffer()
-            {
-                Qpu::getQpuWrapperInstance().freeGpuBuffer(&this);
-            }
-
             GpuBuffer& operator=(GpuBuffer &&other)
             {
                 memoryHandle = other.memoryHandle;
@@ -63,6 +58,11 @@ namespace QPUWrapper
             size_t getCount()
             {
                 return getSize() / sizeof(T);
+            }
+
+            GpuAddress getGpuAddress()
+            {
+                return gpuAddress;
             }
 
         private:

@@ -1,6 +1,8 @@
 #ifndef __QPUWRAPPER__MAPPED_MEMORY_H__
 #define __QPUWRAPPER__MAPPED_MEMORY_H__
 
+#include <type_traits>
+
 #include <stddef.h>
 
 namespace QPUWrapper
@@ -49,6 +51,12 @@ namespace QPUWrapper
             T& operator[](int index)
             {
                 return localAddress[index];
+            }
+
+            void* getGenericDataPointer()
+            {
+                auto normalAddress = const_cast<typename std::remove_cv<T>::type*>(localAddress); //To cast away volatile and const
+                return reinterpret_cast<void*>(normalAddress);
             }
 
             size_t getMappedBlockSize()

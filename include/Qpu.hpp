@@ -27,7 +27,7 @@ namespace QPUWrapper
              * Initializes QPU wrapper (if it's not already initialized) and returns a reference to the singleton
              * @return Wrapper's singleton instance reference
              */
-            Qpu& getQpuWrapperInstance();
+            static Qpu& getQpuWrapperInstance();
 
             /**
              * Allocates a block of memory in CPU-GPU shared memory space
@@ -39,8 +39,10 @@ namespace QPUWrapper
             template<typename T>
             GpuBuffer<T> allocateGpuBuffer(size_t size)
             {
-                auto memoryData = allocateGpuMemory(size * sizeof(T));
-                return GpuBuffer<T>(std::get<0>(memoryData), std::get<1>(memoryData), std::get<2>(memoryData));
+                size_t bytesCount = size * sizeof(T);
+                auto memoryData = allocateGpuMemory(bytesCount);
+                return GpuBuffer<T>(std::get<0>(memoryData), std::get<1>(memoryData),
+                                    MappedMemory<T>(reinterpret_cast<T*>(std::get<2>(memoryData)), bytesCount));
             }
 
             /**

@@ -76,7 +76,7 @@ namespace QPUWrapper
         sendMailboxRequest(request);
 
         //Unmap perihperals address
-        unmapPhysicalAddress(peripherals);
+        unmapPhysicalAddress(peripherals.getGenericDataPointer(), peripherals.getMappedBlockSize());
     }
 
     Qpu& Qpu::getQpuWrapperInstance()
