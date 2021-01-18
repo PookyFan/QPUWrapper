@@ -1,7 +1,6 @@
 #ifndef __QPUWRAPPER__QPU_H__
 #define __QPUWRAPPER__QPU_H__
 
-#include <functional>
 #include <string>
 #include <tuple>
 
@@ -57,22 +56,29 @@ namespace QPUWrapper
             }
 
             /**
-             * Allows to use memory buffer from CPU-GPU shared memory on CPU side
-             * by executing provided function or lambda on the pointer to that memory
+             * Locks block of shared CPU-GPU memory so it could be used on CPU side
+             * Be aware that it must be unlocked before it can be used by QPU (or GPU in general) again
              * @tparam buffered data type
              * @param buffer GpuBuffer object wrapping allocated GPU memory
-             * @param operation function that accepts pointer of buffered data type
+             * @return pointer to buffer's memory available on CPU side
              */
             template<typename T>
-            void useGpuBuffer(GpuBuffer<T> &buffer, std::function<void(T*)> operation)
+            T* lockGpuBuffer(GpuBuffer<T> &buffer)
             {
                 lockGpuMemory(buffer.memoryHandle);
-                try { operation(buffer.localAddress); }
-                catch(...)
-                {
-                    unlockGpuMemory(buffer.memoryHandle);
-                    throw;
-                }
+                return buffer.localAddress;
+            }
+
+            /**
+             * Unlocks block of shared CPU-GPU memory so it could be used on GPU side
+             * After this operation, the pointer returned by lockGpuBuffer() (called on the
+             * same buffer object) is not usable anymore
+             * @tparam T 
+             * @param buffer 
+             */
+            template<typename T>
+            void unlockGpuBuffer(GpuBuffer<T> &buffer)
+            {
                 unlockGpuMemory(buffer.memoryHandle);
             }
 

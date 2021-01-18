@@ -24,6 +24,8 @@ constexpr uint32_t PI1_SDRAM_ADDRESS = 0x40000000;
 constexpr uint32_t MEMORY_ALIGN      = QPUWrapper::PAGE_SIZE;
 constexpr uint32_t ENABLE_QPU        = 1;
 constexpr uint32_t DISABLE_QPU       = 0;
+constexpr uint32_t RESERVE_ENABLED   = 0xE;
+constexpr uint32_t RESERVE_DISABLED  = 0xF;
 
 namespace QPUWrapper
 {
@@ -90,9 +92,9 @@ namespace QPUWrapper
     void Qpu::reserveQpus(int useCount)
     {
         for(int i = 0; i <= 7 && i < qpuCount; ++i)
-            peripherals[V3D_SQRSV0] |= ((useCount > i ? 0xE : 0xF) << (i * 4));
+            peripherals[V3D_SQRSV0] |= ((useCount > i ? RESERVE_ENABLED : RESERVE_DISABLED) << (i * 4));
         for(int i = 8; i < qpuCount; ++i)
-            peripherals[V3D_SQRSV1] |= ((useCount > i ? 0xE : 0xF) << (i * 4));
+            peripherals[V3D_SQRSV1] |= ((useCount > i ? RESERVE_ENABLED : RESERVE_DISABLED) << (i * 4));
     }
 
     void Qpu::unlockGpuMemory(uint32_t memoryHandle)
