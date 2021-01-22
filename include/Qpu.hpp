@@ -1,13 +1,16 @@
 #ifndef __QPUWRAPPER__QPU_H__
 #define __QPUWRAPPER__QPU_H__
 
-#include <string>
+#include <chrono>
+#include <mutex>
+#include <future>
 #include <tuple>
 
 #include <stdint.h>
 
 #include "GpuBuffer.hpp"
 #include "MappedMemory.hpp"
+#include "QpuProgram.hpp"
 
 namespace QPUWrapper
 {
@@ -27,6 +30,15 @@ namespace QPUWrapper
              * @return Wrapper's singleton instance reference
              */
             static Qpu& getQpuWrapperInstance();
+
+            /**
+             * Execute program on QPU in a new thread
+             * @param program QpuProgram object wrapping program to be executed
+             * @param timeout time (in us) to wait for program to finish on all QPU instances before considering its execution failed
+             * @return std::future object that allows to retrieve execution result of the program, and if it hasn't
+             * finished yet - to wait on program's executing thread to finish and then retrieve the result of execution
+             */
+            std::future<ExecutionResult> executeProgram(QpuProgram &program, std::chrono::microseconds timeout);
 
             /**
              * Allocates a block of memory in CPU-GPU shared memory space
@@ -90,9 +102,11 @@ namespace QPUWrapper
             void freeGpuMemory(uint32_t memoryHandle, void *mappedAddress, size_t size);
             GpuAddress lockGpuMemory(uint32_t memoryHandle);
             std::tuple<uint32_t, GpuAddress, void*> allocateGpuMemory(size_t size);
+            ExecutionResult runProgram(QpuProgram &program, std::chrono::microseconds timeout);
             
-            int qpuCount;
-            uint32_t memAllocFlags;
+            int                             qpuCount;
+            uint32_t                        memAllocFlags;
+            std::mutex                      programExecutionMutex;
             MappedMemory<volatile uint32_t> peripherals;
 
             static Qpu *instance;

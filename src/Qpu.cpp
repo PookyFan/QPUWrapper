@@ -1,4 +1,5 @@
 #include <bcm_host.h>
+#include <sched.h>
 
 #include "MailboxRequest.hpp"
 #include "Qpu.hpp"
@@ -15,7 +16,14 @@ constexpr uint32_t MEM_FLAG_NO_INIT  = 1 << 5;
 constexpr uint32_t V3D_IDENT1        = 0xC00004 >> 2;
 constexpr uint32_t V3D_SQRSV0        = 0xC00410 >> 2;
 constexpr uint32_t V3D_SQRSV1        = 0xC00414 >> 2;
+constexpr uint32_t V3D_SRQPC	     = 0xC00430 >> 2;
+constexpr uint32_t V3D_SRQUA	     = 0xC00434 >> 2;
+constexpr uint32_t V3D_SRQUL	     = 0xC00438 >> 2;
+constexpr uint32_t V3D_SRQCS	     = 0xC0043C >> 2;
 constexpr uint32_t V3D_VPMBASE       = 0xC00504 >> 2;
+constexpr uint32_t V3D_DBCFG         = 0xC00E00 >> 2; //This isn't documented, but seems to disallow IRQ on QPUs when set to 0
+constexpr uint32_t V3D_DBQITE	     = 0xC00E2C >> 2;
+constexpr uint32_t V3D_DBQITC	     = 0xC00E30 >> 2;
 
 //Other addresses
 constexpr uint32_t PI1_SDRAM_ADDRESS = 0x40000000;
@@ -89,6 +97,12 @@ namespace QPUWrapper
         return *instance;
     }
 
+    std::future<ExecutionResult> Qpu::executeProgram(QpuProgram &program, std::chrono::microseconds timeout)
+    {
+        program.prepareToExecute();
+        return std::async(std::launch::async, &Qpu::runProgram, this, std::ref(program), timeout);
+    }
+
     void Qpu::reserveQpus(int useCount)
     {
         for(int i = 0; i <= 7 && i < qpuCount; ++i)
@@ -130,6 +144,42 @@ namespace QPUWrapper
 
         void *localAddress = mapPhysicalAddress(busAddressToPhysicalAddress(gpuAddress), size);
         return { memoryHandle, gpuAddress, localAddress };
+    }
+
+    ExecutionResult Qpu::runProgram(QpuProgram &program, std::chrono::microseconds timeout)
+    {
+        std::lock_guard lck(programExecutionMutex);
+
+        //Check how many programs are queued at the moment and how many have already finished
+        int queued = peripherals[V3D_SRQCS] & 0x3F;
+        int finished = (peripherals[V3D_SRQCS] >> 16) & 0xFF;
+        if(int freeQpus = qpuCount - queued; freeQpus < program.instancesCount)
+            return ExecutionResult::QpuBusy;
+
+        //Do not use interrupts
+        peripherals[V3D_DBCFG] = 0;
+        peripherals[V3D_DBQITE] = 0;
+        peripherals[V3D_DBQITC] = 0xFFFF;
+        //todo: do we need to clear caches?
+
+        //Enqueue program on QPU instances
+        for(int i = 0; i < program.instancesCount; ++i)
+        {
+            peripherals[V3D_SRQUA] = program.programMemory.gpuAddress + i * program.uniformsPerInstanceCount * sizeof(uint32_t);
+            peripherals[V3D_SRQUL] = program.uniformsPerInstanceCount * program.instancesCount;
+            peripherals[V3D_SRQPC] = program.programMemory.gpuAddress;
+        }
+
+        auto timeStart = std::chrono::steady_clock::now();
+        int finishedTarget = (finished + program.instancesCount) % 256; //The counter rolls back to 0 when it counts to 256
+        do
+        {
+            sched_yield(); //Give it some time while not blocking other threads
+            if(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - timeStart).count() > timeout.count())
+                return ExecutionResult::Timeout;
+        } while(finished != finishedTarget);
+
+        return ExecutionResult::Success;
     }
 
     /* Static field initialization */
