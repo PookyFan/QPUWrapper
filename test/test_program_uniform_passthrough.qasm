@@ -1,6 +1,7 @@
 #This program just copies value from first uniform into address pointed by second uniform
 
-.include "vc4.qinc" #Source: https://github.com/maazl/vc4asm/blob/master/share/vc4inc/vc4.qinc
+#https://github.com/maazl/vc4asm/blob/master/share/vc4inc/vc4.qinc
+.include "vc4.qinc"
 
 .set data, ra1
 .set addr, ra2

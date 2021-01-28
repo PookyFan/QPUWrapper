@@ -1,7 +1,8 @@
 #This program adds first two uniforms and puts the result into address pointed by third uniform
 #It is run on as many QPUs as indicated by fourth uniform
 
-.include "vc4.qinc" #Source: https://github.com/maazl/vc4asm/blob/master/share/vc4inc/vc4.qinc
+#https://github.com/maazl/vc4asm/blob/master/share/vc4inc/vc4.qinc
+.include "vc4.qinc"
 
 .set first,     ra1
 .set second,    rb1
@@ -48,3 +49,9 @@ mov.setf irq, nop;
 nop ; thrend
 nop;
 nop;
+
+
+##############################################################################################################
+# TODO: prawdopodobnie dlatego ze czasem program zdazy sie skonczyc zanim zakolejkuja sie wszystkie,
+#to czasem nie jest nic odpalane na QPU #0 i przez to test sie pierdoli!!!!!!!!
+#trzeba zmienic tak, zeby to ostatni procek zajmowal sie VDW!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
