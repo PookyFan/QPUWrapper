@@ -9,6 +9,8 @@ using namespace std::chrono_literals;
 constexpr int testNumber = 17;
 constexpr int testAddedNumber = 1;
 
+const auto timeout = 2000us;
+
 uint32_t uniformPassthroughBin[] = {
     0x15827d80, 0x10020067,
     0x15827d80, 0x100200a7,
@@ -30,12 +32,13 @@ uint32_t uniformsAddition[] = {
     0x15827d80, 0x10021067,
     0x15827d80, 0x100200a7,
     0x15827d80, 0x100210a7,
+    0x15827d80, 0x100210e7,
     0x00000a00, 0xe0020827,
-    0x0c9e61c0, 0x10021c67,
+    0x0c9c31c0, 0x10021c67,
     0x0c041dc0, 0x10020c27,
     0x009f2000, 0x100009e7,
     0x00000000, 0xe0020827,
-    0x0c9e61c0, 0x10022867,
+    0x0c9c31c0, 0x10022867,
     0x00000058, 0xf03809e7,
     0x00000000, 0xe80009e7,
     0x00000017, 0xe00208a7,
@@ -68,7 +71,7 @@ int main()
     passthrough[0][1] = resultBuffer.getGpuAddress();
     std::cout << "Testing first program (passthrough) on one QPU instance...\n";
 
-    auto result = qpu.executeProgram(passthrough, 1000us).get();
+    auto result = qpu.executeProgram(passthrough, timeout).get();
     if(result != QPUWrapper::ExecutionResult::Success)
     {
         std::cout << "QPU passthrough program failed with result " << static_cast<int>(result) << std::endl;
@@ -92,17 +95,18 @@ int main()
 
     const int qpuCount = qpu.getQpuCount();
     resultBuffer = qpu.allocateGpuBuffer<uint32_t>(qpuCount * 16);
-    QPUWrapper::QpuProgram addition(qpuCount, 4, reinterpret_cast<uint8_t*>(uniformsAddition), sizeof(uniformsAddition));
+    QPUWrapper::QpuProgram addition(qpuCount, 5, reinterpret_cast<uint8_t*>(uniformsAddition), sizeof(uniformsAddition));
     for(int qpuNr = 0; qpuNr < qpuCount; ++qpuNr)
     {
         addition[qpuNr][0] = qpuNr;
         addition[qpuNr][1] = testAddedNumber;
         addition[qpuNr][2] = resultBuffer.getGpuAddress();
         addition[qpuNr][3] = qpuCount;
+        addition[qpuNr][4] = (qpuCount - qpuNr - 1);
     }
 
     std::cout << "Testing second program (addition) on " << qpuCount << " QPU instances...\n";
-    result = qpu.executeProgram(addition, 1000us).get();
+    result = qpu.executeProgram(addition, timeout).get();
     if(result != QPUWrapper::ExecutionResult::Success)
     {
         std::cout << "QPU addition program failed with result " << static_cast<int>(result) << std::endl;
@@ -112,9 +116,9 @@ int main()
     resultsAddr = qpu.lockGpuBuffer(resultBuffer);
     for(int qpuNr = 0; qpuNr < qpuCount; ++qpuNr)
     {
+        int expected = qpuCount - 1 - qpuNr + testAddedNumber; //Looks like programs are scheduled starting from the last available QPU instance
         for(int i = 0; i < 16; ++i)
         {
-            int expected = qpuCount - 1 - qpuNr + testAddedNumber; //Looks like programs are scheduled starting from the last available QPU instance
             if(auto result = resultsAddr[qpuNr * 16 + i]; result != expected)
             {
                 std::cout << "QPU addition result at QPU nr " << qpuNr << " and index " << i << " invalid: expected " << expected << " got " << result << std::endl;

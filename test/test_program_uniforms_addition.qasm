@@ -1,5 +1,7 @@
 #This program adds first two uniforms and puts the result into address pointed by third uniform
-#It is run on as many QPUs as indicated by fourth uniform
+#It is run on as many QPUs as indicated by fourth uniform, and the current QPU intance number
+#is indicated by fifth uniform (we may use qpu_num, but we can't really trust it, since it may happen
+#that some instances finish the program before all of them are even launched)
 
 #https://github.com/maazl/vc4asm/blob/master/share/vc4inc/vc4.qinc
 .include "vc4.qinc"
@@ -8,20 +10,22 @@
 .set second,    rb1
 .set addr,      ra2
 .set used_qpus, rb2
+.set inst_nr,   rb3
 
 mov first,      unif;
 mov second,     unif;
 mov addr,       unif;
 mov used_qpus,  unif;
+mov inst_nr,    unif;
 
 ldi r0, vpm_setup(0, 0, h32(0));
-add vw_setup, r0, qpu_num;
+add vw_setup, r0, inst_nr;
 add vpm, first, second;
 read vw_wait;
 
 #Check if we run on QPU #0, if not - signal semaphore (increase it), if yes - signal and wait on semaphore (decrease it after increasing)
 ldi r0, 0;
-add.setf r1, r0, qpu_num;
+add.setf r1, r0, inst_nr;
 brr.anynz -, :program_end
 
 #Make use of three pre-branching instructions
@@ -49,9 +53,3 @@ mov.setf irq, nop;
 nop ; thrend
 nop;
 nop;
-
-
-##############################################################################################################
-# TODO: prawdopodobnie dlatego ze czasem program zdazy sie skonczyc zanim zakolejkuja sie wszystkie,
-#to czasem nie jest nic odpalane na QPU #0 i przez to test sie pierdoli!!!!!!!!
-#trzeba zmienic tak, zeby to ostatni procek zajmowal sie VDW!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
