@@ -16,7 +16,7 @@ int main()
 
     QPUWrapper::Qpu &qpu = QPUWrapper::Qpu::getQpuWrapperInstance();
     QPUWrapper::GpuBuffer buffer = qpu.allocateGpuBuffer<uint8_t>(BUFSIZE);
-    uint8_t *addr = qpu.lockGpuBuffer(buffer);//.useGpuBuffer<uint8_t>(buffer, [](uint8_t *addr){
+    uint8_t *addr = qpu.lockGpuBuffer(buffer);
     for(int i = 0; i < BUFSIZE; ++i)
         addr[i] = 0xBA;
     qpu.unlockGpuBuffer(buffer);
