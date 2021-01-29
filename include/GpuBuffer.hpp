@@ -28,11 +28,12 @@ namespace QPUWrapper
             {
                 memoryHandle = other.memoryHandle;
                 gpuAddress = other.gpuAddress;
-                localAddress = other.localAddress;
+                localAddress = std::move(other.localAddress);
 
                 other.memoryHandle = 0;
                 other.gpuAddress = 0;
                 other.localAddress = { nullptr, 0 };
+                return *this;
             }
 
             GpuBuffer& operator=(const GpuBuffer&) = delete;

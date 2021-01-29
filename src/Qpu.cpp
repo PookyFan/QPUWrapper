@@ -13,17 +13,19 @@ constexpr uint32_t MEM_FLAG_NO_INIT  = 1 << 5;
 //VideoCore registers addresses (descriptions available in official VideoCore4 documentation at https://docs.broadcom.com/docs/12358545 )
 //Actually these are indices for accessing 32-bit registers as table of uint32_t elements, thus address is always divided by 4
 //The addresses have offset of 0xC00000 probably to access registers in no-cache mode (not sure about that, though)
-constexpr uint32_t V3D_IDENT1        = 0xC00004 >> 2;
-constexpr uint32_t V3D_SQRSV0        = 0xC00410 >> 2;
-constexpr uint32_t V3D_SQRSV1        = 0xC00414 >> 2;
-constexpr uint32_t V3D_SRQPC	     = 0xC00430 >> 2;
-constexpr uint32_t V3D_SRQUA	     = 0xC00434 >> 2;
-constexpr uint32_t V3D_SRQUL	     = 0xC00438 >> 2;
-constexpr uint32_t V3D_SRQCS	     = 0xC0043C >> 2;
-constexpr uint32_t V3D_VPMBASE       = 0xC00504 >> 2;
-constexpr uint32_t V3D_DBCFG         = 0xC00E00 >> 2; //This isn't documented, but seems to disallow IRQ on QPUs when set to 0
-constexpr uint32_t V3D_DBQITE	     = 0xC00E2C >> 2;
-constexpr uint32_t V3D_DBQITC	     = 0xC00E30 >> 2;
+constexpr uint32_t V3D_IDENT1        = 0xC00004 / sizeof(uint32_t);
+constexpr uint32_t V3D_L2CACTL       = 0xC00020 / sizeof(uint32_t);
+constexpr uint32_t V3D_SLCACTL       = 0xC00024 / sizeof(uint32_t);
+constexpr uint32_t V3D_SQRSV0        = 0xC00410 / sizeof(uint32_t);
+constexpr uint32_t V3D_SQRSV1        = 0xC00414 / sizeof(uint32_t);
+constexpr uint32_t V3D_SRQPC	     = 0xC00430 / sizeof(uint32_t);
+constexpr uint32_t V3D_SRQUA	     = 0xC00434 / sizeof(uint32_t);
+constexpr uint32_t V3D_SRQUL	     = 0xC00438 / sizeof(uint32_t);
+constexpr uint32_t V3D_SRQCS	     = 0xC0043C / sizeof(uint32_t);
+constexpr uint32_t V3D_VPMBASE       = 0xC00504 / sizeof(uint32_t);
+constexpr uint32_t V3D_DBCFG         = 0xC00E00 / sizeof(uint32_t); //This isn't documented, but seems to disallow IRQ on QPUs when set to 0
+constexpr uint32_t V3D_DBQITE	     = 0xC00E2C / sizeof(uint32_t);
+constexpr uint32_t V3D_DBQITC	     = 0xC00E30 / sizeof(uint32_t);
 
 //Other addresses
 constexpr uint32_t PI1_SDRAM_ADDRESS = 0x40000000;
@@ -54,7 +56,7 @@ namespace QPUWrapper
             throw std::runtime_error("Qpu::Qpu(): could not enable QPU");
         
         //Set proper memory allocation flag (apparently only RPI1 and Zero (W) can use cached memory)
-        memAllocFlags = MEM_FLAG_DIRECT | MEM_FLAG_NO_INIT | (bcm_host_get_sdram_address() == PI1_SDRAM_ADDRESS) ? MEM_FLAG_COHERENT : 0;
+        memAllocFlags = MEM_FLAG_DIRECT | MEM_FLAG_NO_INIT | (bcm_host_get_sdram_address() == PI1_SDRAM_ADDRESS ? MEM_FLAG_COHERENT : 0);
 
         //Map peripherals address to process' address space
         unsigned int peripheralAddress = bcm_host_get_peripheral_address();
@@ -67,11 +69,12 @@ namespace QPUWrapper
         int qpuInstancesPerSlice = (ident1 >> 8) & 0xF;
         qpuCount = slicesCount * qpuInstancesPerSlice;
 
+        //Reserve all available QPU instances (for now disable executing programs on them)
+        reserveQpus(0);
+
         //Give QPU programs maximum ammount of VPM memory (in multiples of quadruple 32-bit 16-way vectors)
         peripherals[V3D_VPMBASE] = 16;
 
-        //Reserve all available QPU instances (for now disable executing programs on them)
-        reserveQpus(0);
     }
 
     Qpu::~Qpu()
@@ -86,7 +89,7 @@ namespace QPUWrapper
         sendMailboxRequest(request);
 
         //Unmap perihperals address
-        unmapPhysicalAddress(peripherals.getGenericDataPointer(), peripherals.getMappedBlockSize());
+        unmapPhysicalAddress(bcm_host_get_peripheral_address(), peripherals.getGenericDataPointer(), peripherals.getMappedBlockSize());
     }
 
     Qpu& Qpu::getQpuWrapperInstance()
@@ -105,10 +108,15 @@ namespace QPUWrapper
 
     void Qpu::reserveQpus(int useCount)
     {
+        uint32_t reservationConfig = 0;
         for(int i = 0; i <= 7 && i < qpuCount; ++i)
-            peripherals[V3D_SQRSV0] |= ((useCount > i ? RESERVE_ENABLED : RESERVE_DISABLED) << (i * 4));
+            reservationConfig |= ((useCount > i ? RESERVE_ENABLED : RESERVE_DISABLED) << (i * 4));
+        peripherals[V3D_SQRSV0] = reservationConfig;
+
+        reservationConfig = 0;
         for(int i = 8; i < qpuCount; ++i)
-            peripherals[V3D_SQRSV1] |= ((useCount > i ? RESERVE_ENABLED : RESERVE_DISABLED) << (i * 4));
+            reservationConfig |= ((useCount > i ? RESERVE_ENABLED : RESERVE_DISABLED) << ((i - 8) * 4));
+        peripherals[V3D_SQRSV1] = reservationConfig;
     }
 
     void Qpu::unlockGpuMemory(uint32_t memoryHandle)
@@ -118,11 +126,11 @@ namespace QPUWrapper
         sendMailboxRequest(request);
     }
 
-    void Qpu::freeGpuMemory(uint32_t memoryHandle, void *mappedAddress, size_t size)
+    void Qpu::freeGpuMemory(uint32_t memoryHandle, uint32_t physicalAddress, void *mappedAddress, size_t size)
     {
         MailboxRequest request(RequestType::MemoryDeallocation);
         request << memoryHandle;
-        unmapPhysicalAddress(mappedAddress, size);
+        unmapPhysicalAddress(physicalAddress, mappedAddress, size);
         sendMailboxRequest(request);
     }
 
@@ -155,18 +163,26 @@ namespace QPUWrapper
         int finished = (peripherals[V3D_SRQCS] >> 16) & 0xFF;
         if(int freeQpus = qpuCount - queued; freeQpus < program.instancesCount)
             return ExecutionResult::QpuBusy;
+        else
+            reserveQpus(program.instancesCount);
 
         //Do not use interrupts
         peripherals[V3D_DBCFG] = 0;
         peripherals[V3D_DBQITE] = 0;
         peripherals[V3D_DBQITC] = 0xFFFF;
-        //todo: do we need to clear caches?
+
+        //Clear all caches
+        peripherals[V3D_L2CACTL] = (1<<2);
+	    peripherals[V3D_SLCACTL] = 0b1111<<24 | 0b1111<<16 | 0b1111<<8 | 0b1111<<0;
 
         //Enqueue program on QPU instances
+        program.isProgramExecuted = true;
         for(int i = 0; i < program.instancesCount; ++i)
         {
-            peripherals[V3D_SRQUA] = program.programMemory.gpuAddress + i * program.uniformsPerInstanceCount * sizeof(uint32_t);
-            peripherals[V3D_SRQUL] = program.uniformsPerInstanceCount * program.instancesCount;
+            peripherals[V3D_SRQUA] = program.programMemory.gpuAddress
+                                     + program.codeSectionSize
+                                     + i * program.uniformsPerInstanceCount * sizeof(uint32_t);
+            peripherals[V3D_SRQUL] = program.uniformsPerInstanceCount;
             peripherals[V3D_SRQPC] = program.programMemory.gpuAddress;
         }
 
@@ -177,8 +193,12 @@ namespace QPUWrapper
             sched_yield(); //Give it some time while not blocking other threads
             if(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - timeStart).count() > timeout.count())
                 return ExecutionResult::Timeout;
+            
+            finished = (peripherals[V3D_SRQCS] >> 16) & 0xFF;
         } while(finished != finishedTarget);
 
+        reserveQpus(0);
+        program.isProgramExecuted = false;
         return ExecutionResult::Success;
     }
 

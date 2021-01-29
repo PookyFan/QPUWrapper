@@ -64,7 +64,7 @@ namespace QPUWrapper
             template<typename T>
             void freeGpuBuffer(GpuBuffer<T> &buffer)
             {
-                freeGpuMemory(buffer.memoryHandle, buffer.localAddress, buffer.localAddress.getMappedBlockSize());
+                freeGpuMemory(buffer.memoryHandle, buffer.gpuAddress, buffer.localAddress, buffer.localAddress.getMappedBlockSize());
             }
 
             /**
@@ -94,12 +94,21 @@ namespace QPUWrapper
                 unlockGpuMemory(buffer.memoryHandle);
             }
 
+            /**
+             * Retrieves number of QPUs available on the SoC
+             * @return number of available QPU instances
+             */
+            int getQpuCount()
+            {
+                return qpuCount;
+            }
+
         private:
             Qpu(); //This is a singleton!
 
             void reserveQpus(int useCount);
             void unlockGpuMemory(uint32_t memoryHandle);
-            void freeGpuMemory(uint32_t memoryHandle, void *mappedAddress, size_t size);
+            void freeGpuMemory(uint32_t memoryHandle, uint32_t physicalAddress, void *mappedAddress, size_t size);
             GpuAddress lockGpuMemory(uint32_t memoryHandle);
             std::tuple<uint32_t, GpuAddress, void*> allocateGpuMemory(size_t size);
             ExecutionResult runProgram(QpuProgram &program, std::chrono::microseconds timeout);

@@ -8,30 +8,31 @@
 
 #include "utils.hpp"
 
-constexpr int    MAJOR_NUM = 100;
+constexpr int MAJOR_NUM = 100;
 
 uint32_t mailboxHandle;
 
 namespace QPUWrapper
 {
-    void* mapPhysicalAddress(unsigned int address, size_t size)
+    void* mapPhysicalAddress(unsigned int physicalAddress, size_t size)
     {
-        int offset = address % PAGE_SIZE;
+        int offset = physicalAddress % PAGE_SIZE;
         int fd = open("/dev/mem", O_RDWR|O_SYNC);
         if(fd < 0)
             throw std::runtime_error("mapPhysicalAddress(): can't open memory device (probably not run as root) - error code was: " + std::to_string(errno));
         
-        void *localAddress = mmap(0, size + offset, PROT_READ | PROT_WRITE, MAP_SHARED, fd, address - offset);
+        void *mappedAddress = mmap(0, size + offset, PROT_READ | PROT_WRITE, MAP_SHARED, fd, physicalAddress - offset);
         close(fd);
-        if(localAddress == MAP_FAILED)
+        if(mappedAddress == MAP_FAILED)
             throw std::runtime_error("mapPhysicalAddress(): can't map physical address to local process' address space");
         
-        return localAddress;
+        return reinterpret_cast<uint8_t*>(mappedAddress) + offset;
     }
 
-    void unmapPhysicalAddress(void* address, size_t size)
+    void unmapPhysicalAddress(unsigned int physicalAddress, void* mappedAddress, size_t size)
     {
-        munmap(address, size);
+        int offset = physicalAddress % PAGE_SIZE;
+        munmap(reinterpret_cast<uint8_t*>(mappedAddress) - offset, size + offset);
     }
 
     void openMailbox()

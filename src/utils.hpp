@@ -10,8 +10,8 @@ namespace QPUWrapper
 {
     constexpr size_t PAGE_SIZE = 4096;
     
-    void* mapPhysicalAddress(unsigned int address, size_t size);
-    void  unmapPhysicalAddress(void* address, size_t size);
+    void* mapPhysicalAddress(unsigned int physicalAddress, size_t size);
+    void  unmapPhysicalAddress(unsigned int physicalAddress, void* mappedAddress, size_t size);
     void  openMailbox();
 
     uint32_t* sendMailboxRequest(MailboxRequest &request);
