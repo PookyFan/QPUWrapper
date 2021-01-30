@@ -15,10 +15,9 @@
 namespace QPUWrapper
 {
     /**
-     * This class singleton instance is a main interface
-     * that enables using QPU. It allows to allocate memory
-     * on GPU's part of RAM, load and execute programs on
-     * QPU cores and get basic performance counters.
+     * This class singleton instance is a main interface that enables using QPU.
+     * It allows to allocate memory on GPU's part of RAM, load and execute programs
+     * on QPU cores and get basic performance counters (to be implemented).
      */
     class Qpu
     {

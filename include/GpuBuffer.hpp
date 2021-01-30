@@ -9,6 +9,11 @@ namespace QPUWrapper
 {
     typedef uint32_t GpuAddress;
 
+    /**
+     * Wrapper for a chunk of GPU memory that can also be used by CPU.
+     * Allocated and managed through calls to Qpu class instance methods.
+     * @tparam Data type of elements contained in the buffer
+     */
     template<typename T>
     class GpuBuffer
     {
@@ -61,6 +66,11 @@ namespace QPUWrapper
                 return getSize() / sizeof(T);
             }
 
+            /**
+             * Retrieves GPU-side address of the buffer memory
+             * (needed for example when using buffer as an uniform)
+             * @return memory address in GPU address space
+             */
             GpuAddress getGpuAddress()
             {
                 return gpuAddress;

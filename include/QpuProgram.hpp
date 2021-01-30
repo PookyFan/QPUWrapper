@@ -12,6 +12,11 @@ namespace QPUWrapper
 {
     enum class ExecutionResult : uint8_t { Success, QpuBusy, Timeout };
 
+    /**
+     * Wrapper for user's program that is to be run on QPU instance(s).
+     * Its interface allows only to create new program and manage its uniforms.
+     * To run it, use the appropriate method of Qpu class instance.
+     */
     class QpuProgram
     {
         friend class Qpu;
@@ -20,6 +25,12 @@ namespace QPUWrapper
             QpuProgram(int qpuInstancesToUse, int uniformsPerInstance, uint8_t *programCode, size_t programSize);
             ~QpuProgram();
 
+            /**
+             * Allows to manipulate uniforms of specified program instance.
+             * @param index Instance's index
+             * @return Starting address of program instance's uniforms
+             * (you can use second [] operator to access specific uniform)
+             */
             uint32_t* operator[](int index)
             {
                 if(isProgramExecuted)

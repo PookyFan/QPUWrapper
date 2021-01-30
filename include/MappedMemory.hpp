@@ -7,6 +7,10 @@
 
 namespace QPUWrapper
 {
+    /**
+     * An internal class for memory management.
+     * @tparam Data type of elements contained in the mapped memory chunk
+     */
     template<typename T>
     class MappedMemory
     {
